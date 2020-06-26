@@ -1,0 +1,50 @@
+public List<TechlogVariable> GetVariableForWell(string wellID, string datasetID)
+        {            
+            variables.Clear();
+            TechlogWell well = GetWellByID(wellID);
+            string str = "{  \"RepositoryId\": \"";
+            str += well.RepositoryId;
+            str += "\",  \"WorkspaceId\": \"" + well.WorkspaceId;
+            str += "\",    \"CompoundConstraints\": [ { \"Propagation\": \"None\", \"EntityType\": \"";
+            str += "Variable";
+            str += "\", \"CompoundOperator\": \"And\", \"ChildPropertyConstraints\": [ { \"Propagation\": \"None\", \"EntityType\": \"\", \"PropertyName\": \"";
+            str += "ParentId";
+            str += "\", \"Values\": [ \"";
+            str += datasetID;
+            str += "\"] },  { \"Propagation\": \"None\", \"EntityType\": \"\", \"PropertyName\": \"";
+            str += "SynchronizationStatus";
+            str += "\", \"Values\": [ \"";
+            str += "Same";
+            str += "\" ], \"Operator\": \"Equal\", \"CaseSensitive\": true } ], \"ChildCompoundConstraints\": [ {} ] } ], \"IncludeAncestors\": false,  \"IncludeDescendants\": false,  \"PropertiesToReturn\": [ \"Name\", \"Family\", \"Unit\", \"SubType\"  ],  \"TargetEntity\": \"\",  \"IncludeTemporary\": false,  \"IncludeDeleted\": true,  \"Language\": \"\"}";
+            string url = serverAddress + "/techlog/2018/workspace/entity/query";
+            //string url = serverAddress + "/techlog/" + studioVersion +"/workspace/entity/query";
+            string respString = ReadFromServer(url, str);
+            TechlogEntityRoot techlogEntity = JsonConvert.DeserializeObject<TechlogEntityRoot>(respString, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+            //Object objs = new System.Web.Script.Serialization.JavaScriptSerializer().Deserialize<TechlogEntityRoot>(respString);
+            //TechlogEntityRoot techlogEntity = objs as TechlogEntityRoot;
+            if (techlogEntity.QueryResults.Count > 0)
+            {
+                foreach (TechlogEntity te in techlogEntity.QueryResults)
+                {
+                    TechlogVariable vari = new TechlogVariable();
+                    vari.Id = te.Id;
+                    vari.Name = te.Name;
+                    vari.SubType = te.SubType;
+                    if (te.QueryResultProperties != null && te.QueryResultProperties.Count > 0)
+                    {
+                        TechlogEntityQueryResultProperty prop = te.QueryResultProperties.Find(x => x.Name.Equals("Family"));
+                        if (prop != null)
+                            vari.Family = prop.StringValue;
+                        prop = te.QueryResultProperties.Find(x => x.Name.Equals("Unit"));
+                        if (prop != null)
+                            vari.Unit = prop.StringValue;
+                    }
+                    if (vari.SubType == "Techlog.Variable.Continu")
+                    {
+                        variables.Add(vari);
+                    }
+                }
+                return variables;
+            }
+            return null;
+        } 

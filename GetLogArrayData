@@ -1,0 +1,58 @@
+public double[] GetLogArrayData (string RepositoryID, string WorkspaceID, string VariableId)
+        {
+            if (RepositoryID == null || WorkspaceID == null || VariableId == null)
+                return null;
+
+            string json = "{  \"RepositoryId\": \"";
+            json += RepositoryID;
+            json += "\",  \"WorkspaceId\": \"";
+            json += WorkspaceID;
+            json += "\",  \"EntityIds\": [    \"";
+            json += VariableId;
+            json += "\"  ],  \"FilterConstraint\": { \"Propagation\": \"None\", \"EntityType\": \"\", \"CompoundOperator\": \"And\", \"ChildPropertyConstraints\": [ { \"Propagation\": \"None\", \"EntityType\": \"\", \"PropertyName\": \"\", \"Values\": [ \"\" ], \"Operator\": \"Equal\", \"CaseSensitive\": true } ], \"ChildCompoundConstraints\": [ {} ] },  \"AutoTransientCheckout\": false,  \"RetrieveWithoutChildren\": true,  \"AsCopy\": false}";
+            string url = serverAddress + "/techlog/2018/workspace/entity/retrieve";
+            //string url = serverAddress + "/techlog/" + studioVersion + "/workspace/entity/retrieve";
+            string responeString = ReadFromServer(url, json);
+
+            JArray a = JArray.Parse(responeString);
+            string hashID = "";
+            if (a.Count == 4)
+            {
+                JToken token = a[3];
+                hashID = (string)token.SelectToken("Bulk.BulkParts[0].Hash");
+            }
+            else
+            {
+                return null;
+            }
+
+            if (hashID == "")
+                return null;
+
+            json = "{ \"RepositoryId\": \"";
+            json += RepositoryID;
+            json += "\", \"Hashes\": [ \"";
+            json += hashID + "\" ] }";
+            url = serverAddress + "/techlog/2018/workspace/bulk/fetch";
+            //url = serverAddress + "/techlog/" + studioVersion + "/workspace/bulk/fetch";
+            responeString = ReadFromServer(url, json);
+            List<TechlogBulkData> bulkArray = JsonConvert.DeserializeObject<List<TechlogBulkData>>(responeString, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+            if (bulkArray != null && bulkArray.Count == 1)
+            {
+                TechlogBulkData bulk = bulkArray[0];
+                if (bulk.DataType == "Double")
+                    return bulk.DoubleData;
+                if (bulk.DataType == "Float")
+                {
+                    double[] da = new double[bulk.FloatData.Length];
+                    for(int i=0; i<da.Length; i++ )
+                    {
+                        da[i] = (double)bulk.FloatData[i];
+                    }
+                    return da;
+                }
+            }
+
+            return null;
+
+        } 
